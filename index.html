@@ -245,6 +245,186 @@ input[type="date"]:focus { border-color: var(--accent); }
   .dstats { display: none; }
 }
 </style>
+
+<script>
+// Plain script: available immediately for onclick handlers
+// Navigation functions that don't need Firebase
+window.showRegister = function() {
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('register-wrap').style.display = 'flex';
+};
+window.showLogin = function() {
+  document.getElementById('register-wrap').style.display = 'none';
+  document.getElementById('waiting-wrap').style.display = 'none';
+  document.getElementById('login-wrap').style.display = 'flex';
+};
+// Firebase-dependent functions: retry until module is ready
+function _waitAndCall(fnName, args, delay) {
+  delay = delay || 50;
+  if (window['_' + fnName + 'Fn']) {
+    window['_' + fnName + 'Fn'].apply(null, args || []);
+  } else if (delay < 5000) {
+    setTimeout(function() { _waitAndCall(fnName, args, delay * 2); }, delay);
+  } else {
+    console.error('Module function not loaded:', fnName);
+    alert('Applicazione non ancora pronta. Ricarica la pagina.');
+  }
+}
+window.doLogin = function() { _waitAndCall('doLogin'); };
+window.doLogout = function() { _waitAndCall('doLogout'); };
+window.doRegister = function() { _waitAndCall('doRegister'); };
+window.goHome = function() {
+  if (window._goHomeFn) { window._goHomeFn(); }
+};
+window.openPiano = function(id) {
+  if (window._openPianoFn) { window._openPianoFn(id); }
+};
+window.setFilter = function(f, btn) {
+  if (window._setFilterFn) { window._setFilterFn(f, btn); }
+};
+window.toggleDocs = function() {
+  if (window._toggleDocsFn) { window._toggleDocsFn(); }
+};
+window.openAdd = function() {
+  if (window._openAddFn) { window._openAddFn(); }
+};
+window.closeAdd = function(e) {
+  if (window._closeAddFn) { window._closeAddFn(e); }
+};
+window.saveNewPiano = function() {
+  if (window._saveNewPianoFn) { window._saveNewPianoFn(); }
+};
+window.updatePreview = function() {
+  if (window._updatePreviewFn) { window._updatePreviewFn(); }
+};
+window.togglePrimaDiv = function() {
+  if (window._togglePrimaDivFn) { window._togglePrimaDivFn(); }
+};
+window.closePay = function(e) {
+  if (window._closePayFn) { window._closePayFn(e); }
+};
+window.confirmApprove = function() {
+  if (window._confirmApproveFn) { window._confirmApproveFn(); }
+};
+window.toggleAllPiani = function(cb) {
+  if (window._toggleAllPianiFn) { window._toggleAllPianiFn(cb); }
+};
+window.closeEditRata = function(e) {
+  if (window._closeEditRataFn) { window._closeEditRataFn(e); }
+};
+window.confirmEditRata = function() {
+  if (window._confirmEditRataFn) { window._confirmEditRataFn(); }
+};
+window.confirmDelete = function() {
+  if (window._confirmDeleteFn) { window._confirmDeleteFn(); }
+};
+window.openPay = function(n) {
+  if (window._openPayFn) { window._openPayFn(n); }
+};
+window.openEditRata = function(n) {
+  if (window._openEditRataFn) { window._openEditRataFn(n); }
+};
+window.askDelete = function(id, e) {
+  if (window._askDeleteFn) { window._askDeleteFn(id, e); }
+};
+window.undoPay = function(n, e) {
+  if (window._undoPayFn) { window._undoPayFn(n, e); }
+};
+window.saveNote = function(n, v) {
+  if (window._saveNoteFn) { window._saveNoteFn(n, v); }
+};
+window.changeRole = function(uid, role) {
+  if (window._changeRoleFn) { window._changeRoleFn(uid, role); }
+};
+window.removeUser = function(uid) {
+  if (window._removeUserFn) { window._removeUserFn(uid); }
+};
+window.approveUser = function(uid, role) {
+  if (window._approveUserFn) { window._approveUserFn(uid, role); }
+};
+window.openApproveModal = function(uid, role) {
+  if (window._openApproveModalFn) { window._openApproveModalFn(uid, role); }
+};
+// ── RATA FILE ATTACHMENTS ──
+let pendingRataFileN = null;
+
+window.triggerRataFile = function(n) {
+  pendingRataFileN = n;
+  const inp = document.getElementById('rata-file-input');
+  inp.value = '';
+  inp.click();
+};
+
+document.getElementById('rata-file-input').addEventListener('change', async function() {
+  if (!pendingRataFileN || !currentPianoId) return;
+  showSpinner();
+  const s = statiCache[pendingRataFileN] || {};
+  const existingFiles = s.files || [];
+  for (const file of Array.from(this.files)) {
+    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
+    existingFiles.push({ name: file.name, dataUrl, added: new Date().toISOString() });
+  }
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(pendingRataFileN)),
+      { files: existingFiles, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+    showToast('Ricevuta allegata ✓');
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+  hideSpinner();
+  this.value = '';
+});
+
+window.openRataFile = function(n, i) {
+  const s = statiCache[n] || {};
+  const f = (s.files || [])[i];
+  if (!f) return;
+  const w = window.open();
+  if (f.dataUrl.startsWith('data:application/pdf')) {
+    w.document.write(\`<iframe src="\${f.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>\`);
+  } else {
+    w.document.write(\`<img src="\${f.dataUrl}" style="max-width:100%">\`);
+  }
+};
+
+window.removeRataFile = async function(n, i, e) {
+  e.stopPropagation();
+  const s = statiCache[n] || {};
+  const files = [...(s.files || [])];
+  files.splice(i, 1);
+  showSpinner();
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(n)),
+      { files, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+  } catch(e) { showToast('Errore rimozione', 'error'); }
+  hideSpinner();
+};
+
+window.openDoc = function(key) {
+  if (window._openDocFn) { window._openDocFn(key); }
+};
+window.deleteDoc = function(key) {
+  if (window._deleteDocFn) { window._deleteDocFn(key); }
+};
+window.saveDocNote = function(key, val) {
+  if (window._saveDocNoteFn) { window._saveDocNoteFn(key, val); }
+};
+window.changeDocCat = function(key, cat) {
+  if (window._changeDocCatFn) { window._changeDocCatFn(key, cat); }
+};
+// Show loading state until Firebase module is ready
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('login-btn');
+  if (btn) { btn.textContent = 'Caricamento…'; btn.disabled = true; }
+});
+window._moduleReady = function() {
+  var btn = document.getElementById('login-btn');
+  if (btn && btn.textContent === 'Caricamento…') {
+    btn.textContent = 'Accedi';
+    btn.disabled = false;
+  }
+};
+</script>
 </head>
 <body>
 
@@ -484,185 +664,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 <input type="file" id="rata-file-input" style="display:none" multiple accept=".pdf,.jpg,.jpeg,.png">
 
 <!-- FIREBASE -->
-<script>
-// Plain script: available immediately for onclick handlers
-// Navigation functions that don't need Firebase
-window.showRegister = function() {
-  document.getElementById('login-wrap').style.display = 'none';
-  document.getElementById('register-wrap').style.display = 'flex';
-};
-window.showLogin = function() {
-  document.getElementById('register-wrap').style.display = 'none';
-  document.getElementById('waiting-wrap').style.display = 'none';
-  document.getElementById('login-wrap').style.display = 'flex';
-};
-// Firebase-dependent functions: retry until module is ready
-function _waitAndCall(fnName, args, delay) {
-  delay = delay || 50;
-  if (window['_' + fnName + 'Fn']) {
-    window['_' + fnName + 'Fn'].apply(null, args || []);
-  } else if (delay < 5000) {
-    setTimeout(function() { _waitAndCall(fnName, args, delay * 2); }, delay);
-  } else {
-    console.error('Module function not loaded:', fnName);
-    alert('Applicazione non ancora pronta. Ricarica la pagina.');
-  }
-}
-window.doLogin = function() { _waitAndCall('doLogin'); };
-window.doLogout = function() { _waitAndCall('doLogout'); };
-window.doRegister = function() { _waitAndCall('doRegister'); };
-window.goHome = function() {
-  if (window._goHomeFn) { window._goHomeFn(); }
-};
-window.openPiano = function(id) {
-  if (window._openPianoFn) { window._openPianoFn(id); }
-};
-window.setFilter = function(f, btn) {
-  if (window._setFilterFn) { window._setFilterFn(f, btn); }
-};
-window.toggleDocs = function() {
-  if (window._toggleDocsFn) { window._toggleDocsFn(); }
-};
-window.openAdd = function() {
-  if (window._openAddFn) { window._openAddFn(); }
-};
-window.closeAdd = function(e) {
-  if (window._closeAddFn) { window._closeAddFn(e); }
-};
-window.saveNewPiano = function() {
-  if (window._saveNewPianoFn) { window._saveNewPianoFn(); }
-};
-window.updatePreview = function() {
-  if (window._updatePreviewFn) { window._updatePreviewFn(); }
-};
-window.togglePrimaDiv = function() {
-  if (window._togglePrimaDivFn) { window._togglePrimaDivFn(); }
-};
-window.closePay = function(e) {
-  if (window._closePayFn) { window._closePayFn(e); }
-};
-window.confirmApprove = function() {
-  if (window._confirmApproveFn) { window._confirmApproveFn(); }
-};
-window.toggleAllPiani = function(cb) {
-  if (window._toggleAllPianiFn) { window._toggleAllPianiFn(cb); }
-};
-window.closeEditRata = function(e) {
-  if (window._closeEditRataFn) { window._closeEditRataFn(e); }
-};
-window.confirmEditRata = function() {
-  if (window._confirmEditRataFn) { window._confirmEditRataFn(); }
-};
-window.confirmDelete = function() {
-  if (window._confirmDeleteFn) { window._confirmDeleteFn(); }
-};
-window.openPay = function(n) {
-  if (window._openPayFn) { window._openPayFn(n); }
-};
-window.openEditRata = function(n) {
-  if (window._openEditRataFn) { window._openEditRataFn(n); }
-};
-window.askDelete = function(id, e) {
-  if (window._askDeleteFn) { window._askDeleteFn(id, e); }
-};
-window.undoPay = function(n, e) {
-  if (window._undoPayFn) { window._undoPayFn(n, e); }
-};
-window.saveNote = function(n, v) {
-  if (window._saveNoteFn) { window._saveNoteFn(n, v); }
-};
-window.changeRole = function(uid, role) {
-  if (window._changeRoleFn) { window._changeRoleFn(uid, role); }
-};
-window.removeUser = function(uid) {
-  if (window._removeUserFn) { window._removeUserFn(uid); }
-};
-window.approveUser = function(uid, role) {
-  if (window._approveUserFn) { window._approveUserFn(uid, role); }
-};
-window.openApproveModal = function(uid, role) {
-  if (window._openApproveModalFn) { window._openApproveModalFn(uid, role); }
-};
-// ── RATA FILE ATTACHMENTS ──
-let pendingRataFileN = null;
 
-window.triggerRataFile = function(n) {
-  pendingRataFileN = n;
-  const inp = document.getElementById('rata-file-input');
-  inp.value = '';
-  inp.click();
-};
-
-document.getElementById('rata-file-input').addEventListener('change', async function() {
-  if (!pendingRataFileN || !currentPianoId) return;
-  showSpinner();
-  const s = statiCache[pendingRataFileN] || {};
-  const existingFiles = s.files || [];
-  for (const file of Array.from(this.files)) {
-    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
-    existingFiles.push({ name: file.name, dataUrl, added: new Date().toISOString() });
-  }
-  try {
-    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(pendingRataFileN)),
-      { files: existingFiles, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
-      { merge: true });
-    showToast('Ricevuta allegata ✓');
-  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
-  hideSpinner();
-  this.value = '';
-});
-
-window.openRataFile = function(n, i) {
-  const s = statiCache[n] || {};
-  const f = (s.files || [])[i];
-  if (!f) return;
-  const w = window.open();
-  if (f.dataUrl.startsWith('data:application/pdf')) {
-    w.document.write(\`<iframe src="\${f.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>\`);
-  } else {
-    w.document.write(\`<img src="\${f.dataUrl}" style="max-width:100%">\`);
-  }
-};
-
-window.removeRataFile = async function(n, i, e) {
-  e.stopPropagation();
-  const s = statiCache[n] || {};
-  const files = [...(s.files || [])];
-  files.splice(i, 1);
-  showSpinner();
-  try {
-    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(n)),
-      { files, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
-      { merge: true });
-  } catch(e) { showToast('Errore rimozione', 'error'); }
-  hideSpinner();
-};
-
-window.openDoc = function(key) {
-  if (window._openDocFn) { window._openDocFn(key); }
-};
-window.deleteDoc = function(key) {
-  if (window._deleteDocFn) { window._deleteDocFn(key); }
-};
-window.saveDocNote = function(key, val) {
-  if (window._saveDocNoteFn) { window._saveDocNoteFn(key, val); }
-};
-window.changeDocCat = function(key, cat) {
-  if (window._changeDocCatFn) { window._changeDocCatFn(key, cat); }
-};
-// Show loading state until Firebase module is ready
-document.addEventListener('DOMContentLoaded', function() {
-  var btn = document.getElementById('login-btn');
-  if (btn) { btn.textContent = 'Caricamento…'; btn.disabled = true; }
-});
-window._moduleReady = function() {
-  var btn = document.getElementById('login-btn');
-  if (btn && btn.textContent === 'Caricamento…') {
-    btn.textContent = 'Accedi';
-    btn.disabled = false;
-  }
-};
-</script>
 
 <script type="module">
 

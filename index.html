@@ -545,11 +545,32 @@ onAuthStateChanged(auth, async user => {
 });
 
 // ── REALTIME SYNC ──
+// Cache stati per tutti i piani (per la home)
+let statiHomeCache = {}; // { pianoId: { rataN: {paid, ...} } }
+let unsubStatiHome = {}; // unsubscribe functions per piano
+
 function subscribeToData() {
   if (unsubPiani) unsubPiani();
   unsubPiani = onSnapshot(collection(db, 'piani'), snap => {
     pianiCache = {};
     snap.forEach(d => { pianiCache[d.id] = {id: d.id, ...d.data()}; });
+    // Sottoscrivi agli stati di ogni piano per la home
+    const pianoIds = Object.keys(pianiCache);
+    pianoIds.forEach(pid => {
+      if (unsubStatiHome[pid]) return; // già sottoscritto
+      unsubStatiHome[pid] = onSnapshot(collection(db, 'piani', pid, 'stati'), statiSnap => {
+        statiHomeCache[pid] = {};
+        statiSnap.forEach(sd => {
+          const data = sd.data();
+          if (!data._isDoc) statiHomeCache[pid][sd.id] = data;
+        });
+        if (!currentPianoId) renderHome();
+      });
+    });
+    // Rimuovi sottoscrizioni per piani eliminati
+    Object.keys(unsubStatiHome).forEach(pid => {
+      if (!pianiCache[pid]) { unsubStatiHome[pid](); delete unsubStatiHome[pid]; delete statiHomeCache[pid]; }
+    });
     seedDefaultData();
     if (currentPianoId) renderDetail(); else renderHome();
   });
@@ -616,12 +637,10 @@ function renderHome() {
   let html = '';
 
   piani.forEach(p => {
-    const stati = {}; // stati live only when inside piano
     let pagate=0,versato=0,scadute=0,prossime=0;
-    // Use cached stati if available
-    const ps = pianiCache[p.id]?._statiSummary || {};
+    const ps = statiHomeCache[p.id] || {};
     p.rate.forEach(r => {
-      const s = ps[r.n] || {};
+      const s = ps[String(r.n)] || {};
       const st = s.paid ? 'pagato' : r.data < today() ? 'scaduto' : (new Date(r.data)-new Date(today()))/86400000<=30 ? 'prossimo' : 'attesa';
       if(st==='pagato'){pagate++;versato+=r.imp;}
       if(st==='scaduto') scadute++;

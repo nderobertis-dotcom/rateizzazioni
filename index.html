@@ -682,7 +682,11 @@ window._doRegisterFn = window.doRegister = async function() {
     document.getElementById('waiting-wrap').style.display='flex';
     document.getElementById('waiting-email').textContent=email;
   } catch(e){
-    err.textContent = e.code==='auth/email-already-in-use'?'Email già registrata.':'Errore: '+e.message;
+    if (e.code === 'auth/email-already-in-use') {
+      err.textContent = "Email già in uso. Se l'account è stato eliminato dall'admin, è necessario rimuoverlo anche da Firebase Console > Authentication.";
+    } else {
+      err.textContent = 'Errore: ' + e.message;
+    }
     err.style.display='block';
     btn.disabled=false; btn.textContent='Crea account';
   }
@@ -797,30 +801,40 @@ window._doLogoutFn = window.doLogout = async function() {
 onAuthStateChanged(auth, async user => {
   if (user) {
     currentUser = user;
-    document.getElementById('login-wrap').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
     document.getElementById('topbar-email').textContent = user.email;
-    // Load role
+    // Load role and approval status
     const roleDoc = await getDoc(doc(db, 'users', user.uid));
-    currentRole = roleDoc.exists() ? (roleDoc.data().role || 'viewer') : 'viewer';
     const roleData = roleDoc.exists() ? roleDoc.data() : {};
-    // If first user ever, make them admin
-    const usersSnap = await getDocs(collection(db, 'users'));
-    if (usersSnap.empty) {
-      await setDoc(doc(db, 'users', user.uid), { email: user.email, role: 'admin', approved:true, createdAt: serverTimestamp() });
-      currentRole = 'admin';
+    currentRole = roleData.role || 'viewer';
+
+    // Check if first user ever → make admin
+    if (!roleDoc.exists()) {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      if (usersSnap.empty) {
+        await setDoc(doc(db, 'users', user.uid), { email: user.email, role: 'admin', approved: true, createdAt: serverTimestamp() });
+        currentRole = 'admin';
+        roleData.approved = true;
+      } else {
+        // User exists in Auth but not Firestore → create pending record
+        await setDoc(doc(db, 'users', user.uid), { email: user.email, displayName: '', role: 'viewer', approved: false, createdAt: serverTimestamp() });
+        roleData.approved = false;
+      }
     }
-    // Block unapproved viewers
-    if (currentRole === 'viewer' && roleData.approved === false) {
-      await signOut(auth);
-      const err = document.getElementById('login-err');
-      err.textContent = 'Il tuo account \u00e8 in attesa di approvazione da parte dell\'amministratore.';
-      err.style.display = 'block';
-      document.getElementById('login-btn').disabled = false;
-      document.getElementById('login-btn').textContent = 'Accedi';
+
+    // Block unapproved users → show waiting screen
+    if (roleData.approved !== true) {
+      document.getElementById('login-wrap').style.display = 'none';
+      document.getElementById('register-wrap').style.display = 'none';
+      document.getElementById('waiting-wrap').style.display = 'flex';
+      document.getElementById('waiting-email').textContent = user.email;
       return;
     }
+
+    // Approved: show app
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
     if (currentRole === 'admin') document.getElementById('admin-section').style.display = 'block';
+    window._assignedPiani = (currentRole === 'admin') ? null : (roleData.assignedPiani || []);
     subscribeToData();
   } else {
     currentUser = null;
@@ -1526,9 +1540,16 @@ window._changeRoleFn = window.changeRole = async function(uid,role) {
 };
 
 window._removeUserFn = window.removeUser = async function(uid) {
-  if(!confirm('Rimuovere questo utente?')) return;
-  try { await deleteDoc(doc(db,'users',uid)); showToast('Utente rimosso'); loadUsers(); }
-  catch(e){showToast('Errore: '+e.message,'error');}
+  const u = (window._usersCache||[]).find(x=>x.uid===uid);
+  const name = u ? (u.displayName||u.email||uid) : uid;
+  if(!confirm('Rimuovere ' + name + '?\n\nNota: per permettere la ri-registrazione con la stessa email, vai anche su Firebase Console > Authentication e cancella l\'utente manualmente.')) return;
+  showSpinner();
+  try {
+    await deleteDoc(doc(db,'users',uid));
+    showToast('Utente rimosso da Firestore. Ricorda di eliminarlo anche da Firebase Auth Console.');
+    loadUsers();
+  } catch(e){showToast('Errore: '+e.message,'error');}
+  hideSpinner();
 };
 
 </script>

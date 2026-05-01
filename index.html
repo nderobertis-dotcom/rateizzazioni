@@ -266,6 +266,38 @@ input[type="date"]:focus { border-color: var(--accent); }
       <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Accedi</button>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Non hai un account? <a href="#" onclick="showRegister()" style="color:var(--accent);font-weight:600">Registrati</a></p>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="register-wrap" class="login-wrap" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="icon">🗂</div>
+      <h1>Crea account</h1>
+      <p>Accesso in attesa di approvazione Admin</p>
+    </div>
+    <div class="login-err" id="reg-err"></div>
+    <div class="login-err" id="reg-ok" style="background:#dcfce7;color:#166534;display:none"></div>
+    <div class="login-field">
+      <label>Nome e Cognome</label>
+      <input type="text" id="reg-name" placeholder="Mario Rossi">
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="nome@esempio.it" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="reg-pwd" placeholder="minimo 6 caratteri" autocomplete="new-password">
+    </div>
+    <div class="login-field">
+      <label>Conferma Password</label>
+      <input type="password" id="reg-pwd2" placeholder="ripeti la password" autocomplete="new-password">
+    </div>
+    <button class="login-btn" id="reg-btn" onclick="doRegister()">Crea account</button>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Hai già un account? <a href="#" onclick="showLogin()" style="color:var(--accent);font-weight:600">Accedi</a></p>
   </div>
 </div>
 
@@ -291,16 +323,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="grid" id="cards-grid"></div>
     <div class="admin-section" id="admin-section" style="display:none">
       <h3>👥 Gestione accessi</h3>
-      <div class="invite-form">
-        <input type="email" id="invite-email" placeholder="Email nuovo utente…">
-        <input type="password" id="invite-pwd" placeholder="Password temporanea">
-        <select id="invite-role">
-          <option value="editor">Editor</option>
-          <option value="viewer">Viewer</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button class="btn primary" style="flex:none" onclick="inviteUser()">Aggiungi</button>
-      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Gli utenti che si registrano appaiono qui come <strong>In attesa</strong>. Approvali o assegna il ruolo manualmente.</p>
       <div class="user-table" id="user-table"></div>
     </div>
   </div>
@@ -527,11 +550,22 @@ onAuthStateChanged(auth, async user => {
     // Load role
     const roleDoc = await getDoc(doc(db, 'users', user.uid));
     currentRole = roleDoc.exists() ? (roleDoc.data().role || 'viewer') : 'viewer';
+    const roleData = roleDoc.exists() ? roleDoc.data() : {};
     // If first user ever, make them admin
     const usersSnap = await getDocs(collection(db, 'users'));
     if (usersSnap.empty) {
-      await setDoc(doc(db, 'users', user.uid), { email: user.email, role: 'admin', createdAt: serverTimestamp() });
+      await setDoc(doc(db, 'users', user.uid), { email: user.email, role: 'admin', approved:true, createdAt: serverTimestamp() });
       currentRole = 'admin';
+    }
+    // Block unapproved viewers
+    if (currentRole === 'viewer' && roleData.approved === false) {
+      await signOut(auth);
+      const err = document.getElementById('login-err');
+      err.textContent = 'Il tuo account è in attesa di approvazione da parte dell'amministratore.';
+      err.style.display = 'block';
+      document.getElementById('login-btn').disabled = false;
+      document.getElementById('login-btn').textContent = 'Accedi';
+      return;
     }
     if (currentRole === 'admin') document.getElementById('admin-section').style.display = 'block';
     subscribeToData();
@@ -1021,23 +1055,54 @@ async function loadUsers() {
     </div>`).join('');
 }
 
-window.inviteUser = async function() {
-  const email=document.getElementById('invite-email').value.trim();
-  const pwd=document.getElementById('invite-pwd').value;
-  const role=document.getElementById('invite-role').value;
-  if(!email||!pwd){showToast('Inserisci email e password','error');return;}
-  showSpinner();
+// Register / Login toggle
+window.showRegister = function() {
+  document.getElementById('login-wrap').style.display='none';
+  document.getElementById('register-wrap').style.display='flex';
+};
+window.showLogin = function() {
+  document.getElementById('register-wrap').style.display='none';
+  document.getElementById('login-wrap').style.display='flex';
+};
+
+window.doRegister = async function() {
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pwd=document.getElementById('reg-pwd').value;
+  const pwd2=document.getElementById('reg-pwd2').value;
+  const err=document.getElementById('reg-err');
+  const ok=document.getElementById('reg-ok');
+  err.style.display='none'; ok.style.display='none';
+  if(!name){err.textContent='Inserisci il tuo nome.';err.style.display='block';return;}
+  if(!email){err.textContent='Inserisci la tua email.';err.style.display='block';return;}
+  if(pwd.length<6){err.textContent='La password deve essere di almeno 6 caratteri.';err.style.display='block';return;}
+  if(pwd!==pwd2){err.textContent='Le password non corrispondono.';err.style.display='block';return;}
+  const btn=document.getElementById('reg-btn');
+  btn.disabled=true; btn.textContent='Registrazione…';
   try {
     const cred=await createUserWithEmailAndPassword(auth,email,pwd);
-    await setDoc(doc(db,'users',cred.user.uid),{email,role,createdAt:serverTimestamp(),createdBy:currentUser.email});
-    // Re-sign in as current user (createUser changes auth state)
-    await signInWithEmailAndPassword(auth,currentUser.email, prompt('Reinserisci la tua password per rimanere collegato:'));
-    showToast(`Utente ${email} aggiunto ✓`);
-    document.getElementById('invite-email').value='';
-    document.getElementById('invite-pwd').value='';
+    await setDoc(doc(db,'users',cred.user.uid),{
+      email, displayName:name, role:'viewer', approved:false,
+      createdAt:serverTimestamp()
+    });
+    await signOut(auth);
+    ok.textContent='✓ Account creato! Attendi l'approvazione dell'amministratore prima di accedere.';
+    ok.style.display='block';
+    btn.textContent='Registrato!';
+    setTimeout(()=>showLogin(),3000);
+  } catch(e){
+    err.textContent = e.code==='auth/email-already-in-use'?'Email già registrata.':'Errore: '+e.message;
+    err.style.display='block';
+    btn.disabled=false; btn.textContent='Crea account';
+  }
+};
+
+window.approveUser = async function(uid, role) {
+  try {
+    await updateDoc(doc(db,'users',uid),{role, approved:true});
+    showToast(`Utente approvato come ${role} ✓`);
     loadUsers();
   } catch(e){showToast('Errore: '+e.message,'error');}
-  hideSpinner();
 };
 
 window.changeRole = async function(uid,role) {

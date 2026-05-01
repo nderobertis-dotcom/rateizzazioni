@@ -485,7 +485,8 @@ input[type="date"]:focus { border-color: var(--accent); }
 
 <!-- FIREBASE -->
 <script>
-// These must be in a plain script (not module) so onclick can find them immediately
+// Plain script: available immediately for onclick handlers
+// Navigation functions that don't need Firebase
 window.showRegister = function() {
   document.getElementById('login-wrap').style.display = 'none';
   document.getElementById('register-wrap').style.display = 'flex';
@@ -495,18 +496,21 @@ window.showLogin = function() {
   document.getElementById('waiting-wrap').style.display = 'none';
   document.getElementById('login-wrap').style.display = 'flex';
 };
-window.doLogin = function() {
-  // Delegate to module once loaded
-  if (window._doLoginFn) { window._doLoginFn(); }
-  else { setTimeout(window.doLogin, 100); }
-};
-window.doLogout = function() {
-  if (window._doLogoutFn) { window._doLogoutFn(); }
-};
-window.doRegister = function() {
-  if (window._doRegisterFn) { window._doRegisterFn(); }
-  else { setTimeout(window.doRegister, 100); }
-};
+// Firebase-dependent functions: retry until module is ready
+function _waitAndCall(fnName, args, delay) {
+  delay = delay || 50;
+  if (window['_' + fnName + 'Fn']) {
+    window['_' + fnName + 'Fn'].apply(null, args || []);
+  } else if (delay < 5000) {
+    setTimeout(function() { _waitAndCall(fnName, args, delay * 2); }, delay);
+  } else {
+    console.error('Module function not loaded:', fnName);
+    alert('Applicazione non ancora pronta. Ricarica la pagina.');
+  }
+}
+window.doLogin = function() { _waitAndCall('doLogin'); };
+window.doLogout = function() { _waitAndCall('doLogout'); };
+window.doRegister = function() { _waitAndCall('doRegister'); };
 window.goHome = function() {
   if (window._goHomeFn) { window._goHomeFn(); }
 };
@@ -645,6 +649,18 @@ window.saveDocNote = function(key, val) {
 };
 window.changeDocCat = function(key, cat) {
   if (window._changeDocCatFn) { window._changeDocCatFn(key, cat); }
+};
+// Show loading state until Firebase module is ready
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('login-btn');
+  if (btn) { btn.textContent = 'Caricamento…'; btn.disabled = true; }
+});
+window._moduleReady = function() {
+  var btn = document.getElementById('login-btn');
+  if (btn && btn.textContent === 'Caricamento…') {
+    btn.textContent = 'Accedi';
+    btn.disabled = false;
+  }
 };
 </script>
 
@@ -1437,6 +1453,9 @@ window._changeDocCatFn = window.changeDocCat = async function(key,cat) {
   try { await setDoc(doc(db,'piani',currentPianoId,'stati',key),{cat},{merge:true}); renderDocs(); }
   catch(e){}
 };
+
+// Signal that module is fully loaded
+if (window._moduleReady) window._moduleReady();
 
 // ── ADMIN: UTENTI ──
 async function loadUsers() {

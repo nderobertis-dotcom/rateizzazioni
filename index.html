@@ -301,6 +301,20 @@ input[type="date"]:focus { border-color: var(--accent); }
   </div>
 </div>
 
+<!-- WAITING SCREEN -->
+<div id="waiting-wrap" class="login-wrap" style="display:none">
+  <div class="login-box" style="text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">⏳</div>
+    <h1 style="color:var(--accent);font-size:18px;margin-bottom:8px">Account in attesa di approvazione</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">
+      Il tuo account (<strong id="waiting-email"></strong>) è stato registrato.<br>
+      L'amministratore ti darà accesso a breve.
+    </p>
+    <p style="color:var(--text-muted);font-size:12px;margin-bottom:20px">Ricarica la pagina dopo aver ricevuto conferma.</p>
+    <button class="login-btn" onclick="doLogout()" style="background:#6b7280">Disconnetti</button>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
   <div class="topbar">
@@ -350,7 +364,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Scadenza</th><th>Importo</th><th>Stato</th><th>Data pag.</th><th>Note</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Scadenza</th><th>Importo</th><th>Stato</th><th>Data pag.</th><th>Note</th><th>✏️</th><th></th></tr></thead>
         <tbody id="detail-tbody"></tbody>
       </table>
       <div class="empty-state" id="detail-empty" style="display:none">Nessuna rata trovata.</div>
@@ -415,6 +429,43 @@ input[type="date"]:focus { border-color: var(--accent); }
   </div>
 </div>
 
+<!-- APPROVE USER MODAL -->
+<div class="overlay" id="approve-overlay">
+  <div class="modal" style="max-width:480px">
+    <h2>✓ Approva utente</h2>
+    <p class="msub">Assegna i piani visibili a <strong id="approve-modal-name"></strong> come <strong id="approve-modal-role"></strong></p>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">Piani accessibili</div>
+    <div id="approve-piani-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 12px;margin-bottom:16px"></div>
+    <div class="mactions">
+      <button class="btn primary" onclick="confirmApprove()">✓ Conferma approvazione</button>
+      <button class="btn secondary" onclick="document.getElementById('approve-overlay').classList.remove('open')">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RATA MODAL -->
+<div class="overlay" id="edit-rata-overlay" onclick="closeEditRata(event)">
+  <div class="modal" style="max-width:420px">
+    <h2>✏️ Modifica rata</h2>
+    <p class="msub" id="edit-rata-sub">Rata –</p>
+    <div class="frow">
+      <label>Importo (€)</label>
+      <input type="number" id="edit-rata-imp" step="0.01" min="0" placeholder="es. 149.85">
+    </div>
+    <div class="frow">
+      <label>Data scadenza</label>
+      <input type="date" id="edit-rata-data">
+    </div>
+    <div style="background:#fef3c7;border-radius:6px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:16px">
+      ⚠️ La modifica aggiorna solo questa rata. Il totale del piano verrà ricalcolato automaticamente.
+    </div>
+    <div class="mactions">
+      <button class="btn primary" onclick="confirmEditRata()">Salva modifica</button>
+      <button class="btn secondary" onclick="closeEditRata()">Annulla</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE -->
 <div class="overlay" id="del-overlay">
   <div class="modal" style="max-width:360px">
@@ -457,6 +508,8 @@ let currentPianoId = null;
 let currentFilter = 'tutte';
 let pendingPayN = null;
 let pendingDeleteId = null;
+let pendingApproveUid = null;
+let pendingApproveRole = null;
 let pianiCache = {};
 let statiCache = {};
 let unsubPiani = null;
@@ -666,7 +719,21 @@ async function seedDefaultData() {
 
 // ── HOME ──
 function renderHome() {
-  const piani = Object.values(pianiCache);
+  const assignedPiani = window._assignedPiani; // null=all, array=specific ids
+  const allPiani = Object.values(pianiCache);
+  const piani = (currentRole === 'admin' || assignedPiani === null)
+    ? allPiani
+    : allPiani.filter(p => assignedPiani && assignedPiani.includes(p.id));
+
+  if (currentRole !== 'admin' && piani.length === 0) {
+    document.getElementById('cards-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-muted);font-size:14px">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <p>Nessun piano assegnato al tuo account.<br>Contatta l'amministratore.</p>
+    </div>`;
+    document.getElementById('global-summary').innerHTML = '';
+    return;
+  }
+
   let totVersato=0, totResiduo=0, totScadute=0;
   let html = '';
 
@@ -703,7 +770,7 @@ function renderHome() {
     </div>`;
   });
 
-  if (currentRole==='admin' || currentRole==='editor') {
+  if (currentRole==='admin') {
     html += `<div class="add-card" onclick="openAdd()"><div class="plus">+</div><div>Aggiungi rateizzazione</div></div>`;
   }
 
@@ -719,6 +786,11 @@ function renderHome() {
 
 // ── NAVIGATION ──
 window.openPiano = function(id) {
+  // Check access
+  if (currentRole !== 'admin' && window._assignedPiani !== null && !window._assignedPiani.includes(id)) {
+    showToast('Non hai accesso a questo piano','error');
+    return;
+  }
   currentPianoId = id; currentFilter = 'tutte';
   document.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('active', b.textContent.trim()==='Tutte'));
   document.getElementById('page-home').classList.remove('active');
@@ -793,6 +865,9 @@ function renderDetail() {
     const payBtn = !canEdit ? '' : st==='pagato'
       ? `<button class="pay-btn undo" onclick="undoPay(${r.n},event)">Annulla</button>`
       : `<button class="pay-btn" onclick="openPay(${r.n})">✓ Pagata</button>`;
+    const editBtn = canEdit
+      ? `<button style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'" onclick="openEditRata(${r.n})">✏️</button>`
+      : '';
     const noteVal = (s.note||'').replace(/"/g,'&quot;');
     const noteEl = canEdit
       ? `<input class="notes-input" type="text" placeholder="nota…" value="${noteVal}" onchange="saveNote(${r.n},this.value)" onclick="event.stopPropagation()">`
@@ -804,6 +879,7 @@ function renderDetail() {
       <td><span class="status-badge ${cls}"><span class="dot"></span>${lbl}</span></td>
       <td style="font-size:12px;color:var(--text-muted)">${s.paidDate?fmtDate(s.paidDate):'–'}</td>
       <td>${noteEl}</td>
+      <td>${editBtn}</td>
       <td>${payBtn}</td>
     </tr>`;
   }).join('');
@@ -919,6 +995,54 @@ window.askDelete = function(id,e) {
   document.getElementById('del-msg').textContent=`Eliminare "${p.nome}"? Tutti i dati verranno persi.`;
   document.getElementById('del-overlay').classList.add('open');
 };
+// ── EDIT RATA ──
+let pendingEditN = null;
+
+window.openEditRata = function(n) {
+  const piano = pianiCache[currentPianoId];
+  const r = piano.rate.find(x => x.n === n);
+  if (!r) return;
+  pendingEditN = n;
+  document.getElementById('edit-rata-sub').textContent = `Rata ${r.n} di ${piano.rate.length} — scadenza ${fmtDate(r.data)}`;
+  document.getElementById('edit-rata-imp').value = r.imp;
+  document.getElementById('edit-rata-data').value = r.data;
+  document.getElementById('edit-rata-overlay').classList.add('open');
+};
+
+window.closeEditRata = function(e) {
+  if (e && e.target !== document.getElementById('edit-rata-overlay')) return;
+  document.getElementById('edit-rata-overlay').classList.remove('open');
+  pendingEditN = null;
+};
+
+window.confirmEditRata = async function() {
+  const impVal = parseFloat(document.getElementById('edit-rata-imp').value);
+  const dataVal = document.getElementById('edit-rata-data').value;
+  if (!impVal || impVal <= 0) { showToast('Inserisci un importo valido', 'error'); return; }
+  if (!dataVal) { showToast('Inserisci una data valida', 'error'); return; }
+
+  const piano = pianiCache[currentPianoId];
+  const nuoveRate = piano.rate.map(r => {
+    if (r.n === pendingEditN) return { ...r, imp: Math.round(impVal * 100) / 100, data: dataVal };
+    return r;
+  });
+  const nuovoTotale = nuoveRate.reduce((a, r) => a + r.imp, 0);
+
+  showSpinner();
+  try {
+    await updateDoc(doc(db, 'piani', currentPianoId), {
+      rate: nuoveRate,
+      totale: Math.round(nuovoTotale * 100) / 100,
+      lastEditedBy: currentUser.email,
+      lastEditedAt: serverTimestamp()
+    });
+    showToast('Rata aggiornata ✓');
+    document.getElementById('edit-rata-overlay').classList.remove('open');
+    pendingEditN = null;
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+  hideSpinner();
+};
+
 window.confirmDelete = async function() {
   showSpinner();
   try {
@@ -1044,6 +1168,7 @@ async function loadUsers() {
   const snap=await getDocs(collection(db,'users'));
   const rows=[];
   snap.forEach(d=>rows.push({uid:d.id,...d.data()}));
+  window._usersCache = rows;
   const roleMap={admin:'Admin',editor:'Editor',viewer:'Viewer'};
   document.getElementById('user-table').innerHTML=rows.map(u=>`
     <div class="user-row">
@@ -1098,11 +1223,55 @@ window.doRegister = async function() {
 };
 
 window.approveUser = async function(uid, role) {
+  openApproveModal(uid, role);
+};
+
+window.openApproveModal = function(uid, role) {
+  const rows = window._usersCache || [];
+  const u = rows.find(x=>x.uid===uid) || {uid};
+  pendingApproveUid = uid;
+  pendingApproveRole = role;
+  const piani = Object.values(pianiCache);
+  document.getElementById('approve-modal-name').textContent = u.displayName || u.email || uid;
+  document.getElementById('approve-modal-role').textContent = role === 'editor' ? 'Editor' : 'Viewer';
+  document.getElementById('approve-piani-list').innerHTML = piani.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">
+      <input type="checkbox" value="${p.id}" style="width:15px;height:15px;accent-color:var(--accent)">
+      <span><strong>${p.nome}</strong> <span style="color:var(--text-muted);font-size:11px">${p.ente||''}</span></span>
+    </label>`).join('') +
+    `<label style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;cursor:pointer;margin-top:4px">
+      <input type="checkbox" id="approve-all-piani" onchange="toggleAllPiani(this)">
+      <span style="font-weight:600;color:var(--accent)">Tutti i piani presenti e futuri</span>
+    </label>`;
+  document.getElementById('approve-overlay').classList.add('open');
+};
+
+window.toggleAllPiani = function(cb) {
+  document.querySelectorAll('#approve-piani-list input[type=checkbox]:not(#approve-all-piani)')
+    .forEach(c => { c.checked = cb.checked; c.disabled = cb.checked; });
+};
+
+window.confirmApprove = async function() {
+  const allCb = document.getElementById('approve-all-piani');
+  let assignedPiani = null;
+  if (!allCb.checked) {
+    assignedPiani = Array.from(document.querySelectorAll('#approve-piani-list input[type=checkbox]:not(#approve-all-piani):checked')).map(c=>c.value);
+    if (!assignedPiani.length) { showToast('Seleziona almeno un piano o "Tutti i piani"','error'); return; }
+  }
+  showSpinner();
   try {
-    await updateDoc(doc(db,'users',uid),{role, approved:true});
-    showToast(`Utente approvato come ${role} ✓`);
+    await updateDoc(doc(db,'users',pendingApproveUid),{
+      role: pendingApproveRole,
+      approved: true,
+      assignedPiani: assignedPiani,
+      approvedBy: currentUser.email,
+      approvedAt: serverTimestamp()
+    });
+    showToast('Utente approvato ✓');
+    document.getElementById('approve-overlay').classList.remove('open');
     loadUsers();
-  } catch(e){showToast('Errore: '+e.message,'error');}
+  } catch(e){ showToast('Errore: '+e.message,'error'); }
+  hideSpinner();
 };
 
 window.changeRole = async function(uid,role) {

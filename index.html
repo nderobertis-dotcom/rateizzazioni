@@ -483,10 +483,154 @@ input[type="date"]:focus { border-color: var(--accent); }
 <input type="file" id="docs-file-input" style="display:none" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
 
 <!-- FIREBASE -->
+<script>
+// These must be in a plain script (not module) so onclick can find them immediately
+window.showRegister = function() {
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('register-wrap').style.display = 'flex';
+};
+window.showLogin = function() {
+  document.getElementById('register-wrap').style.display = 'none';
+  document.getElementById('waiting-wrap').style.display = 'none';
+  document.getElementById('login-wrap').style.display = 'flex';
+};
+window.doLogin = function() {
+  // Delegate to module once loaded
+  if (window._doLoginFn) { window._doLoginFn(); }
+  else { setTimeout(window.doLogin, 100); }
+};
+window.doLogout = function() {
+  if (window._doLogoutFn) { window._doLogoutFn(); }
+};
+window.doRegister = function() {
+  if (window._doRegisterFn) { window._doRegisterFn(); }
+  else { setTimeout(window.doRegister, 100); }
+};
+window.goHome = function() {
+  if (window._goHomeFn) { window._goHomeFn(); }
+};
+window.openPiano = function(id) {
+  if (window._openPianoFn) { window._openPianoFn(id); }
+};
+window.setFilter = function(f, btn) {
+  if (window._setFilterFn) { window._setFilterFn(f, btn); }
+};
+window.toggleDocs = function() {
+  if (window._toggleDocsFn) { window._toggleDocsFn(); }
+};
+window.openAdd = function() {
+  if (window._openAddFn) { window._openAddFn(); }
+};
+window.closeAdd = function(e) {
+  if (window._closeAddFn) { window._closeAddFn(e); }
+};
+window.saveNewPiano = function() {
+  if (window._saveNewPianoFn) { window._saveNewPianoFn(); }
+};
+window.updatePreview = function() {
+  if (window._updatePreviewFn) { window._updatePreviewFn(); }
+};
+window.togglePrimaDiv = function() {
+  if (window._togglePrimaDivFn) { window._togglePrimaDivFn(); }
+};
+window.closePay = function(e) {
+  if (window._closePayFn) { window._closePayFn(e); }
+};
+window.confirmApprove = function() {
+  if (window._confirmApproveFn) { window._confirmApproveFn(); }
+};
+window.toggleAllPiani = function(cb) {
+  if (window._toggleAllPianiFn) { window._toggleAllPianiFn(cb); }
+};
+window.closeEditRata = function(e) {
+  if (window._closeEditRataFn) { window._closeEditRataFn(e); }
+};
+window.confirmEditRata = function() {
+  if (window._confirmEditRataFn) { window._confirmEditRataFn(); }
+};
+window.confirmDelete = function() {
+  if (window._confirmDeleteFn) { window._confirmDeleteFn(); }
+};
+window.openPay = function(n) {
+  if (window._openPayFn) { window._openPayFn(n); }
+};
+window.openEditRata = function(n) {
+  if (window._openEditRataFn) { window._openEditRataFn(n); }
+};
+window.askDelete = function(id, e) {
+  if (window._askDeleteFn) { window._askDeleteFn(id, e); }
+};
+window.undoPay = function(n, e) {
+  if (window._undoPayFn) { window._undoPayFn(n, e); }
+};
+window.saveNote = function(n, v) {
+  if (window._saveNoteFn) { window._saveNoteFn(n, v); }
+};
+window.changeRole = function(uid, role) {
+  if (window._changeRoleFn) { window._changeRoleFn(uid, role); }
+};
+window.removeUser = function(uid) {
+  if (window._removeUserFn) { window._removeUserFn(uid); }
+};
+window.approveUser = function(uid, role) {
+  if (window._approveUserFn) { window._approveUserFn(uid, role); }
+};
+window.openApproveModal = function(uid, role) {
+  if (window._openApproveModalFn) { window._openApproveModalFn(uid, role); }
+};
+window.openDoc = function(key) {
+  if (window._openDocFn) { window._openDocFn(key); }
+};
+window.deleteDoc = function(key) {
+  if (window._deleteDocFn) { window._deleteDocFn(key); }
+};
+window.saveDocNote = function(key, val) {
+  if (window._saveDocNoteFn) { window._saveDocNoteFn(key, val); }
+};
+window.changeDocCat = function(key, cat) {
+  if (window._changeDocCatFn) { window._changeDocCatFn(key, cat); }
+};
+</script>
+
 <script type="module">
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+
+// ── REGISTER (needs Firebase) ──
+window._doRegisterFn = window.doRegister = async function() {
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pwd=document.getElementById('reg-pwd').value;
+  const pwd2=document.getElementById('reg-pwd2').value;
+  const err=document.getElementById('reg-err');
+  const ok=document.getElementById('reg-ok');
+  err.style.display='none'; ok.style.display='none';
+  if(!name){err.textContent='Inserisci il tuo nome.';err.style.display='block';return;}
+  if(!email){err.textContent='Inserisci la tua email.';err.style.display='block';return;}
+  if(pwd.length<6){err.textContent='La password deve essere di almeno 6 caratteri.';err.style.display='block';return;}
+  if(pwd!==pwd2){err.textContent='Le password non corrispondono.';err.style.display='block';return;}
+  const btn=document.getElementById('reg-btn');
+  btn.disabled=true; btn.textContent='Registrazione…';
+  try {
+    const cred=await createUserWithEmailAndPassword(auth,email,pwd);
+    await setDoc(doc(db,'users',cred.user.uid),{
+      email, displayName:name, role:'viewer', approved:false,
+      createdAt:serverTimestamp()
+    });
+    await signOut(auth);
+    ok.textContent='✓ Account creato! Attendi l'approvazione dell'amministratore prima di accedere.';
+    ok.style.display='block';
+    btn.textContent='Registrato!';
+    setTimeout(()=>window.showLogin(),3000);
+  } catch(e){
+    err.textContent = e.code==='auth/email-already-in-use'?'Email già registrata.':'Errore: '+e.message;
+    err.style.display='block';
+    btn.disabled=false; btn.textContent='Crea account';
+  }
+};
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEo2SbKBuLWjFJ98ZVK_07novxxEqkGw8",
@@ -573,7 +717,7 @@ function hideSpinner() { document.getElementById('spinner').classList.remove('sh
 // ── AUTH ──
 document.getElementById('login-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-window.doLogin = async function() {
+window._doLoginFn = window.doLogin = async function() {
   const email = document.getElementById('login-email').value.trim();
   const pwd = document.getElementById('login-pwd').value;
   const btn = document.getElementById('login-btn');
@@ -588,7 +732,7 @@ window.doLogin = async function() {
   }
 };
 
-window.doLogout = async function() {
+window._doLogoutFn = window.doLogout = async function() {
   if (unsubPiani) unsubPiani();
   if (unsubStati) unsubStati();
   await signOut(auth);
@@ -785,7 +929,7 @@ function renderHome() {
 }
 
 // ── NAVIGATION ──
-window.openPiano = function(id) {
+window._openPianoFn = window.openPiano = function(id) {
   // Check access
   if (currentRole !== 'admin' && window._assignedPiani !== null && !window._assignedPiani.includes(id)) {
     showToast('Non hai accesso a questo piano','error');
@@ -800,7 +944,7 @@ window.openPiano = function(id) {
   subscribeToStati(id);
 };
 
-window.goHome = function() {
+window._goHomeFn = window.goHome = function() {
   currentPianoId = null;
   if (unsubStati) { unsubStati(); unsubStati = null; }
   document.getElementById('page-detail').classList.remove('active');
@@ -812,7 +956,7 @@ window.goHome = function() {
   renderHome();
 };
 
-window.setFilter = function(f, btn) {
+window._setFilterFn = window.setFilter = function(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
   if(btn) btn.classList.add('active');
@@ -888,7 +1032,7 @@ function renderDetail() {
 }
 
 // ── PAGAMENTI ──
-window.openPay = function(n) {
+window._openPayFn = window.openPay = function(n) {
   const piano = pianiCache[currentPianoId];
   const r = piano.rate.find(x=>x.n===n);
   pendingPayN = n;
@@ -915,7 +1059,7 @@ async function confirmPay() {
   hideSpinner(); closePay();
 }
 
-window.undoPay = async function(n, e) {
+window._undoPayFn = window.undoPay = async function(n, e) {
   e.stopPropagation();
   showSpinner();
   try {
@@ -925,29 +1069,29 @@ window.undoPay = async function(n, e) {
   hideSpinner();
 };
 
-window.closePay = function(e) {
+window._closePayFn = window.closePay = function(e) {
   if(e&&e.target!==document.getElementById('pay-overlay')) return;
   document.getElementById('pay-overlay').classList.remove('open');
 };
 
 // ── NOTE ──
-window.saveNote = async function(n, val) {
+window._saveNoteFn = window.saveNote = async function(n, val) {
   try {
     await setDoc(doc(db,'piani',currentPianoId,'stati',String(n)), {note:val, updatedBy:currentUser.email, updatedAt:serverTimestamp()}, {merge:true});
   } catch(e) { showToast('Errore salvataggio nota','error'); }
 };
 
 // ── AGGIUNGI PIANO ──
-window.openAdd = function() { document.getElementById('add-overlay').classList.add('open'); updatePreview(); };
-window.closeAdd = function(e) {
+window._openAddFn = window.openAdd = function() { document.getElementById('add-overlay').classList.add('open'); updatePreview(); };
+window._closeAddFn = window.closeAdd = function(e) {
   if(e&&e.target!==document.getElementById('add-overlay')) return;
   document.getElementById('add-overlay').classList.remove('open');
 };
-window.togglePrimaDiv = function() {
+window._togglePrimaDivFn = window.togglePrimaDiv = function() {
   document.getElementById('prima-div-box').style.display = document.getElementById('f-prima-div').checked ? 'block' : 'none';
   updatePreview();
 };
-window.updatePreview = function() {
+window._updatePreviewFn = window.updatePreview = function() {
   const totale=parseFloat(document.getElementById('f-totale').value);
   const nRate=parseInt(document.getElementById('f-nrate').value);
   const primaData=document.getElementById('f-prima-data').value;
@@ -967,7 +1111,7 @@ window.updatePreview = function() {
     <div class="preview-row"><span>Totale piano</span><span>${fmtEur(rate.reduce((a,r)=>a+r.imp,0))}</span></div>`;
 };
 
-window.saveNewPiano = async function() {
+window._saveNewPianoFn = window.saveNewPiano = async function() {
   const nome=document.getElementById('f-nome').value.trim();
   const ente=document.getElementById('f-ente').value.trim();
   const totale=parseFloat(document.getElementById('f-totale').value);
@@ -989,7 +1133,7 @@ window.saveNewPiano = async function() {
 };
 
 // ── DELETE ──
-window.askDelete = function(id,e) {
+window._askDeleteFn = window.askDelete = function(id,e) {
   e.stopPropagation(); pendingDeleteId=id;
   const p=pianiCache[id];
   document.getElementById('del-msg').textContent=`Eliminare "${p.nome}"? Tutti i dati verranno persi.`;
@@ -998,7 +1142,7 @@ window.askDelete = function(id,e) {
 // ── EDIT RATA ──
 let pendingEditN = null;
 
-window.openEditRata = function(n) {
+window._openEditRataFn = window.openEditRata = function(n) {
   const piano = pianiCache[currentPianoId];
   const r = piano.rate.find(x => x.n === n);
   if (!r) return;
@@ -1009,13 +1153,13 @@ window.openEditRata = function(n) {
   document.getElementById('edit-rata-overlay').classList.add('open');
 };
 
-window.closeEditRata = function(e) {
+window._closeEditRataFn = window.closeEditRata = function(e) {
   if (e && e.target !== document.getElementById('edit-rata-overlay')) return;
   document.getElementById('edit-rata-overlay').classList.remove('open');
   pendingEditN = null;
 };
 
-window.confirmEditRata = async function() {
+window._confirmEditRataFn = window.confirmEditRata = async function() {
   const impVal = parseFloat(document.getElementById('edit-rata-imp').value);
   const dataVal = document.getElementById('edit-rata-data').value;
   if (!impVal || impVal <= 0) { showToast('Inserisci un importo valido', 'error'); return; }
@@ -1043,7 +1187,7 @@ window.confirmEditRata = async function() {
   hideSpinner();
 };
 
-window.confirmDelete = async function() {
+window._confirmDeleteFn = window.confirmDelete = async function() {
   showSpinner();
   try {
     await deleteDoc(doc(db,'piani',pendingDeleteId));
@@ -1063,7 +1207,7 @@ const DOC_CATS = [
   {id:'altro',label:'Altro'}
 ];
 
-window.toggleDocs = function() {
+window._toggleDocsFn = window.toggleDocs = function() {
   const panel=document.getElementById('docs-panel');
   panel.classList.toggle('open');
   if(panel.classList.contains('open')) renderDocs();
@@ -1139,7 +1283,7 @@ document.getElementById('docs-file-input').addEventListener('change', async func
   this.value='';
 });
 
-window.openDoc = function(key) {
+window._openDocFn = window.openDoc = function(key) {
   const d=statiCache[key];
   if(!d?.dataUrl) return;
   const w=window.open();
@@ -1147,18 +1291,18 @@ window.openDoc = function(key) {
     ?`<iframe src="${d.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>`
     :`<img src="${d.dataUrl}" style="max-width:100%">`);
 };
-window.deleteDoc = async function(key) {
+window._deleteDocFn = window.deleteDoc = async function(key) {
   if(!confirm('Eliminare questo documento?')) return;
   showSpinner();
   try { await deleteDoc(doc(db,'piani',currentPianoId,'stati',key)); showToast('Documento eliminato'); }
   catch(e){showToast('Errore: '+e.message,'error');}
   hideSpinner();
 };
-window.saveDocNote = async function(key,val) {
+window._saveDocNoteFn = window.saveDocNote = async function(key,val) {
   try { await setDoc(doc(db,'piani',currentPianoId,'stati',key),{note:val},{merge:true}); }
   catch(e){}
 };
-window.changeDocCat = async function(key,cat) {
+window._changeDocCatFn = window.changeDocCat = async function(key,cat) {
   try { await setDoc(doc(db,'piani',currentPianoId,'stati',key),{cat},{merge:true}); renderDocs(); }
   catch(e){}
 };
@@ -1180,53 +1324,13 @@ async function loadUsers() {
     </div>`).join('');
 }
 
-// Register / Login toggle
-window.showRegister = function() {
-  document.getElementById('login-wrap').style.display='none';
-  document.getElementById('register-wrap').style.display='flex';
-};
-window.showLogin = function() {
-  document.getElementById('register-wrap').style.display='none';
-  document.getElementById('login-wrap').style.display='flex';
-};
+// Register/Login toggle: see plain script above
 
-window.doRegister = async function() {
-  const name=document.getElementById('reg-name').value.trim();
-  const email=document.getElementById('reg-email').value.trim();
-  const pwd=document.getElementById('reg-pwd').value;
-  const pwd2=document.getElementById('reg-pwd2').value;
-  const err=document.getElementById('reg-err');
-  const ok=document.getElementById('reg-ok');
-  err.style.display='none'; ok.style.display='none';
-  if(!name){err.textContent='Inserisci il tuo nome.';err.style.display='block';return;}
-  if(!email){err.textContent='Inserisci la tua email.';err.style.display='block';return;}
-  if(pwd.length<6){err.textContent='La password deve essere di almeno 6 caratteri.';err.style.display='block';return;}
-  if(pwd!==pwd2){err.textContent='Le password non corrispondono.';err.style.display='block';return;}
-  const btn=document.getElementById('reg-btn');
-  btn.disabled=true; btn.textContent='Registrazione…';
-  try {
-    const cred=await createUserWithEmailAndPassword(auth,email,pwd);
-    await setDoc(doc(db,'users',cred.user.uid),{
-      email, displayName:name, role:'viewer', approved:false,
-      createdAt:serverTimestamp()
-    });
-    await signOut(auth);
-    ok.textContent='✓ Account creato! Attendi l'approvazione dell'amministratore prima di accedere.';
-    ok.style.display='block';
-    btn.textContent='Registrato!';
-    setTimeout(()=>showLogin(),3000);
-  } catch(e){
-    err.textContent = e.code==='auth/email-already-in-use'?'Email già registrata.':'Errore: '+e.message;
-    err.style.display='block';
-    btn.disabled=false; btn.textContent='Crea account';
-  }
-};
-
-window.approveUser = async function(uid, role) {
+window._approveUserFn = window.approveUser = async function(uid, role) {
   openApproveModal(uid, role);
 };
 
-window.openApproveModal = function(uid, role) {
+window._openApproveModalFn = window.openApproveModal = function(uid, role) {
   const rows = window._usersCache || [];
   const u = rows.find(x=>x.uid===uid) || {uid};
   pendingApproveUid = uid;
@@ -1246,12 +1350,12 @@ window.openApproveModal = function(uid, role) {
   document.getElementById('approve-overlay').classList.add('open');
 };
 
-window.toggleAllPiani = function(cb) {
+window._toggleAllPianiFn = window.toggleAllPiani = function(cb) {
   document.querySelectorAll('#approve-piani-list input[type=checkbox]:not(#approve-all-piani)')
     .forEach(c => { c.checked = cb.checked; c.disabled = cb.checked; });
 };
 
-window.confirmApprove = async function() {
+window._confirmApproveFn = window.confirmApprove = async function() {
   const allCb = document.getElementById('approve-all-piani');
   let assignedPiani = null;
   if (!allCb.checked) {
@@ -1274,12 +1378,12 @@ window.confirmApprove = async function() {
   hideSpinner();
 };
 
-window.changeRole = async function(uid,role) {
+window._changeRoleFn = window.changeRole = async function(uid,role) {
   try { await updateDoc(doc(db,'users',uid),{role}); showToast('Ruolo aggiornato ✓'); loadUsers(); }
   catch(e){showToast('Errore: '+e.message,'error');}
 };
 
-window.removeUser = async function(uid) {
+window._removeUserFn = window.removeUser = async function(uid) {
   if(!confirm('Rimuovere questo utente?')) return;
   try { await deleteDoc(doc(db,'users',uid)); showToast('Utente rimosso'); loadUsers(); }
   catch(e){showToast('Errore: '+e.message,'error');}

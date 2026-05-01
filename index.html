@@ -621,7 +621,7 @@ window._doRegisterFn = window.doRegister = async function() {
       createdAt:serverTimestamp()
     });
     await signOut(auth);
-    ok.textContent='✓ Account creato! Attendi l'approvazione dell'amministratore prima di accedere.';
+    ok.textContent='\u2713 Account creato! Attendi l\'approvazione dell\'amministratore prima di accedere.';
     ok.style.display='block';
     btn.textContent='Registrato!';
     setTimeout(()=>window.showLogin(),3000);
@@ -758,7 +758,7 @@ onAuthStateChanged(auth, async user => {
     if (currentRole === 'viewer' && roleData.approved === false) {
       await signOut(auth);
       const err = document.getElementById('login-err');
-      err.textContent = 'Il tuo account è in attesa di approvazione da parte dell'amministratore.';
+      err.textContent = 'Il tuo account \u00e8 in attesa di approvazione da parte dell\'amministratore.';
       err.style.display = 'block';
       document.getElementById('login-btn').disabled = false;
       document.getElementById('login-btn').textContent = 'Accedi';

@@ -364,7 +364,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Scadenza</th><th>Importo</th><th>Stato</th><th>Data pag.</th><th>Note</th><th>✏️</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Scadenza</th><th>Importo</th><th>Stato</th><th>Data pag.</th><th>Note</th><th>Ricevuta</th><th>✏️</th><th></th></tr></thead>
         <tbody id="detail-tbody"></tbody>
       </table>
       <div class="empty-state" id="detail-empty" style="display:none">Nessuna rata trovata.</div>
@@ -481,6 +481,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 <div class="toast" id="toast"></div>
 <div class="spinner-wrap" id="spinner"><div class="spinner"></div></div>
 <input type="file" id="docs-file-input" style="display:none" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+<input type="file" id="rata-file-input" style="display:none" multiple accept=".pdf,.jpg,.jpeg,.png">
 
 <!-- FIREBASE -->
 <script>
@@ -578,6 +579,61 @@ window.approveUser = function(uid, role) {
 window.openApproveModal = function(uid, role) {
   if (window._openApproveModalFn) { window._openApproveModalFn(uid, role); }
 };
+// ── RATA FILE ATTACHMENTS ──
+let pendingRataFileN = null;
+
+window.triggerRataFile = function(n) {
+  pendingRataFileN = n;
+  const inp = document.getElementById('rata-file-input');
+  inp.value = '';
+  inp.click();
+};
+
+document.getElementById('rata-file-input').addEventListener('change', async function() {
+  if (!pendingRataFileN || !currentPianoId) return;
+  showSpinner();
+  const s = statiCache[pendingRataFileN] || {};
+  const existingFiles = s.files || [];
+  for (const file of Array.from(this.files)) {
+    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
+    existingFiles.push({ name: file.name, dataUrl, added: new Date().toISOString() });
+  }
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(pendingRataFileN)),
+      { files: existingFiles, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+    showToast('Ricevuta allegata ✓');
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+  hideSpinner();
+  this.value = '';
+});
+
+window.openRataFile = function(n, i) {
+  const s = statiCache[n] || {};
+  const f = (s.files || [])[i];
+  if (!f) return;
+  const w = window.open();
+  if (f.dataUrl.startsWith('data:application/pdf')) {
+    w.document.write(\`<iframe src="\${f.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>\`);
+  } else {
+    w.document.write(\`<img src="\${f.dataUrl}" style="max-width:100%">\`);
+  }
+};
+
+window.removeRataFile = async function(n, i, e) {
+  e.stopPropagation();
+  const s = statiCache[n] || {};
+  const files = [...(s.files || [])];
+  files.splice(i, 1);
+  showSpinner();
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(n)),
+      { files, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+  } catch(e) { showToast('Errore rimozione', 'error'); }
+  hideSpinner();
+};
+
 window.openDoc = function(key) {
   if (window._openDocFn) { window._openDocFn(key); }
 };
@@ -621,10 +677,10 @@ window._doRegisterFn = window.doRegister = async function() {
       createdAt:serverTimestamp()
     });
     await signOut(auth);
-    ok.textContent='\u2713 Account creato! Attendi l\'approvazione dell\'amministratore prima di accedere.';
-    ok.style.display='block';
-    btn.textContent='Registrato!';
-    setTimeout(()=>window.showLogin(),3000);
+    // Show waiting screen immediately without requiring login attempt
+    document.getElementById('register-wrap').style.display='none';
+    document.getElementById('waiting-wrap').style.display='flex';
+    document.getElementById('waiting-email').textContent=email;
   } catch(e){
     err.textContent = e.code==='auth/email-already-in-use'?'Email già registrata.':'Errore: '+e.message;
     err.style.display='block';
@@ -1012,6 +1068,11 @@ function renderDetail() {
     const editBtn = canEdit
       ? `<button style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'" onclick="window.openEditRata(${r.n})">✏️</button>`
       : '';
+    // Allegati per rata
+    const rataFiles = (s.files || []);
+    const filesHtml = rataFiles.map((f, i) =>
+      `<span style="display:inline-flex;align-items:center;gap:3px;background:#e8f0fb;border:1px solid #c5d8f5;color:var(--accent);padding:2px 6px;border-radius:4px;font-size:10px;margin:1px;cursor:pointer" onclick="window.openRataFile(${r.n},${i})" title="${f.name}">📎 ${f.name.length>12?f.name.slice(0,12)+'…':f.name} <span onclick="window.removeRataFile(${r.n},${i},event)" style="color:#999;margin-left:2px;font-size:10px">✕</span></span>`
+    ).join('') + (canEdit ? `<button onclick="window.triggerRataFile(${r.n})" style="background:transparent;border:1px dashed var(--border);color:var(--text-muted);padding:2px 7px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit">+ Allega</button>` : '');
     const noteVal = (s.note||'').replace(/"/g,'&quot;');
     const noteEl = canEdit
       ? `<input class="notes-input" type="text" placeholder="nota…" value="${noteVal}" onchange="window.saveNote(${r.n},this.value)" onclick="event.stopPropagation()">`
@@ -1023,6 +1084,7 @@ function renderDetail() {
       <td><span class="status-badge ${cls}"><span class="dot"></span>${lbl}</span></td>
       <td style="font-size:12px;color:var(--text-muted)">${s.paidDate?fmtDate(s.paidDate):'–'}</td>
       <td>${noteEl}</td>
+      <td class="file-cell">${filesHtml}</td>
       <td>${editBtn}</td>
       <td>${payBtn}</td>
     </tr>`;
@@ -1283,7 +1345,62 @@ document.getElementById('docs-file-input').addEventListener('change', async func
   this.value='';
 });
 
-window._openDocFn = window.openDoc = function(key) {
+window._openDocFn = // ── RATA FILE ATTACHMENTS ──
+let pendingRataFileN = null;
+
+window.triggerRataFile = function(n) {
+  pendingRataFileN = n;
+  const inp = document.getElementById('rata-file-input');
+  inp.value = '';
+  inp.click();
+};
+
+document.getElementById('rata-file-input').addEventListener('change', async function() {
+  if (!pendingRataFileN || !currentPianoId) return;
+  showSpinner();
+  const s = statiCache[pendingRataFileN] || {};
+  const existingFiles = s.files || [];
+  for (const file of Array.from(this.files)) {
+    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
+    existingFiles.push({ name: file.name, dataUrl, added: new Date().toISOString() });
+  }
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(pendingRataFileN)),
+      { files: existingFiles, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+    showToast('Ricevuta allegata ✓');
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+  hideSpinner();
+  this.value = '';
+});
+
+window.openRataFile = function(n, i) {
+  const s = statiCache[n] || {};
+  const f = (s.files || [])[i];
+  if (!f) return;
+  const w = window.open();
+  if (f.dataUrl.startsWith('data:application/pdf')) {
+    w.document.write(\`<iframe src="\${f.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>\`);
+  } else {
+    w.document.write(\`<img src="\${f.dataUrl}" style="max-width:100%">\`);
+  }
+};
+
+window.removeRataFile = async function(n, i, e) {
+  e.stopPropagation();
+  const s = statiCache[n] || {};
+  const files = [...(s.files || [])];
+  files.splice(i, 1);
+  showSpinner();
+  try {
+    await setDoc(doc(db, 'piani', currentPianoId, 'stati', String(n)),
+      { files, updatedBy: currentUser.email, updatedAt: serverTimestamp() },
+      { merge: true });
+  } catch(e) { showToast('Errore rimozione', 'error'); }
+  hideSpinner();
+};
+
+window.openDoc = function(key) {
   const d=statiCache[key];
   if(!d?.dataUrl) return;
   const w=window.open();
@@ -1314,14 +1431,39 @@ async function loadUsers() {
   snap.forEach(d=>rows.push({uid:d.id,...d.data()}));
   window._usersCache = rows;
   const roleMap={admin:'Admin',editor:'Editor',viewer:'Viewer'};
-  document.getElementById('user-table').innerHTML=rows.map(u=>`
-    <div class="user-row">
-      <div class="user-email">${u.email||u.uid}</div>
+  const pending = rows.filter(u => u.approved === false && u.uid !== currentUser.uid);
+  const active  = rows.filter(u => u.approved !== false || u.uid === currentUser.uid);
+
+  let tableHtml = '';
+
+  if (pending.length) {
+    tableHtml += `<div style="padding:8px 16px;background:#fef3c7;font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.07em">⏳ In attesa di approvazione (${pending.length})</div>`;
+    pending.forEach(u => {
+      tableHtml += `<div class="user-row" style="background:#fffbf0">
+        <div class="user-email">${u.displayName ? '<strong>'+u.displayName+'</strong><br>' : ''}<span style="font-size:12px">${u.email||u.uid}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn primary" style="padding:4px 10px;font-size:11px" onclick="window.openApproveModal('${u.uid}','editor')">✓ Approva come Editor</button>
+          <button class="btn secondary" style="padding:4px 10px;font-size:11px" onclick="window.openApproveModal('${u.uid}','viewer')">Solo lettura</button>
+          <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="window.removeUser('${u.uid}')">✕ Rifiuta</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  active.forEach(u => {
+    tableHtml += `<div class="user-row">
+      <div class="user-email">${u.displayName ? '<strong>'+u.displayName+'</strong><br>' : ''}<span style="font-size:12px">${u.email||u.uid}</span></div>
       <select class="role-select" onchange="window.changeRole('${u.uid}',this.value)" ${u.uid===currentUser.uid?'disabled':''}>
         ${['admin','editor','viewer'].map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${roleMap[r]}</option>`).join('')}
       </select>
-      ${u.uid!==currentUser.uid?`<button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="window.removeUser('${u.uid}')">Rimuovi</button>`:'<span style="font-size:11px;color:var(--text-muted)">(tu)</span>'}
-    </div>`).join('');
+      ${u.uid!==currentUser.uid
+        ? `<button class="btn secondary" style="padding:4px 8px;font-size:11px" onclick="window.openApproveModal('${u.uid}', '${u.role||'editor'}')">📋 Piani</button>
+           <button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="window.removeUser('${u.uid}')">Rimuovi</button>`
+        : '<span style="font-size:11px;color:var(--text-muted)">(tu)</span>'}
+    </div>`;
+  });
+
+  document.getElementById('user-table').innerHTML = tableHtml || '<div style="padding:16px;color:var(--text-muted);font-size:13px">Nessun utente registrato.</div>';
 }
 
 // Register/Login toggle: see plain script above

@@ -265,8 +265,8 @@ input[type="date"]:focus { border-color: var(--accent); }
       <label>Password</label>
       <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Accedi</button>
-    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Non hai un account? <a href="#" onclick="showRegister()" style="color:var(--accent);font-weight:600">Registrati</a></p>
+    <button class="login-btn" id="login-btn" onclick="window.doLogin()">Accedi</button>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Non hai un account? <a href="#" onclick="window.showRegister()" style="color:var(--accent);font-weight:600">Registrati</a></p>
   </div>
 </div>
 
@@ -296,8 +296,8 @@ input[type="date"]:focus { border-color: var(--accent); }
       <label>Conferma Password</label>
       <input type="password" id="reg-pwd2" placeholder="ripeti la password" autocomplete="new-password">
     </div>
-    <button class="login-btn" id="reg-btn" onclick="doRegister()">Crea account</button>
-    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Hai già un account? <a href="#" onclick="showLogin()" style="color:var(--accent);font-weight:600">Accedi</a></p>
+    <button class="login-btn" id="reg-btn" onclick="window.doRegister()">Crea account</button>
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">Hai già un account? <a href="#" onclick="window.showLogin()" style="color:var(--accent);font-weight:600">Accedi</a></p>
   </div>
 </div>
 
@@ -311,20 +311,20 @@ input[type="date"]:focus { border-color: var(--accent); }
       L'amministratore ti darà accesso a breve.
     </p>
     <p style="color:var(--text-muted);font-size:12px;margin-bottom:20px">Ricarica la pagina dopo aver ricevuto conferma.</p>
-    <button class="login-btn" onclick="doLogout()" style="background:#6b7280">Disconnetti</button>
+    <button class="login-btn" onclick="window.doLogout()" style="background:#6b7280">Disconnetti</button>
   </div>
 </div>
 
 <!-- APP -->
 <div id="app">
   <div class="topbar">
-    <button class="topbar-back" id="topbar-back" onclick="goHome()">← Home</button>
-    <div class="topbar-brand" onclick="goHome()">🗂 Rateizzazioni</div>
+    <button class="topbar-back" id="topbar-back" onclick="window.goHome()">← Home</button>
+    <div class="topbar-brand" onclick="window.goHome()">🗂 Rateizzazioni</div>
     <span class="topbar-title" id="topbar-title"></span>
-    <button class="topbar-docs" id="topbar-docs" onclick="toggleDocs()">📎 Documenti <span class="badge" id="docs-badge" style="display:none">0</span></button>
+    <button class="topbar-docs" id="topbar-docs" onclick="window.toggleDocs()">📎 Documenti <span class="badge" id="docs-badge" style="display:none">0</span></button>
     <div class="topbar-user">
       <span id="topbar-email"></span>
-      <button class="topbar-logout" onclick="doLogout()">Esci</button>
+      <button class="topbar-logout" onclick="window.doLogout()">Esci</button>
     </div>
   </div>
 
@@ -356,11 +356,11 @@ input[type="date"]:focus { border-color: var(--accent); }
       <div class="pb-lbl" id="pb-lbl">0 / 0</div>
     </div>
     <div class="filters">
-      <button class="fbtn active" onclick="setFilter('tutte',this)">Tutte</button>
-      <button class="fbtn" onclick="setFilter('scadute',this)">⚠ Scadute</button>
-      <button class="fbtn" onclick="setFilter('prossime',this)">↑ Prossime 30gg</button>
-      <button class="fbtn" onclick="setFilter('pagate',this)">✓ Pagate</button>
-      <button class="fbtn" onclick="setFilter('da_pagare',this)">Da pagare</button>
+      <button class="fbtn active" onclick="window.setFilter('tutte',this)">Tutte</button>
+      <button class="fbtn" onclick="window.setFilter('scadute',this)">⚠ Scadute</button>
+      <button class="fbtn" onclick="window.setFilter('prossime',this)">↑ Prossime 30gg</button>
+      <button class="fbtn" onclick="window.setFilter('pagate',this)">✓ Pagate</button>
+      <button class="fbtn" onclick="window.setFilter('da_pagare',this)">Da pagare</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -376,13 +376,13 @@ input[type="date"]:focus { border-color: var(--accent); }
 <div class="docs-panel" id="docs-panel">
   <div class="docs-ph">
     <div><h3>📎 Documenti</h3><p id="docs-panel-sub"></p></div>
-    <button class="docs-close" onclick="toggleDocs()">✕ Chiudi</button>
+    <button class="docs-close" onclick="window.toggleDocs()">✕ Chiudi</button>
   </div>
   <div class="docs-body" id="docs-body"></div>
 </div>
 
 <!-- MODAL AGGIUNGI -->
-<div class="overlay" id="add-overlay" onclick="closeAdd(event)">
+<div class="overlay" id="add-overlay" onclick="window.closeAdd(event)">
   <div class="modal">
     <h2>➕ Nuova rateizzazione</h2>
     <p class="msub">Piano di ammortamento alla francese</p>
@@ -396,35 +396,35 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="fcols">
       <div class="frow"><label>Scadenza prima rata</label><input type="date" id="f-prima-data" oninput="updatePreview()"></div>
       <div class="frow"><label>Frequenza</label>
-        <select id="f-freq" onchange="updatePreview()">
+        <select id="f-freq" onchange="window.updatePreview()">
           <option value="monthly">Mensile</option>
           <option value="bimonthly">Bimestrale</option>
           <option value="quarterly">Trimestrale</option>
         </select>
       </div>
     </div>
-    <label class="toggle-row"><input type="checkbox" id="f-prima-div" onchange="togglePrimaDiv()"> Prima rata con importo diverso (include spese extra)</label>
+    <label class="toggle-row"><input type="checkbox" id="f-prima-div" onchange="window.togglePrimaDiv()"> Prima rata con importo diverso (include spese extra)</label>
     <div id="prima-div-box" style="display:none">
       <div class="frow"><label>Importo prima rata (€)</label><input type="number" id="f-prima-imp" step="0.01" oninput="updatePreview()"><div class="hint">Il residuo viene distribuito nelle rate successive</div></div>
     </div>
     <div class="sdivider">Anteprima</div>
     <div class="preview-box" id="preview-box"><div style="color:var(--text-muted);font-size:12px">Compila i campi per vedere l'anteprima.</div></div>
     <div class="mactions">
-      <button class="btn primary" onclick="saveNewPiano()">Crea piano</button>
-      <button class="btn secondary" onclick="closeAdd()">Annulla</button>
+      <button class="btn primary" onclick="window.saveNewPiano()">Crea piano</button>
+      <button class="btn secondary" onclick="window.closeAdd()">Annulla</button>
     </div>
   </div>
 </div>
 
 <!-- MODAL PAGA -->
-<div class="overlay" id="pay-overlay" onclick="closePay(event)">
+<div class="overlay" id="pay-overlay" onclick="window.closePay(event)">
   <div class="modal">
     <h2 id="pay-title">Rata –</h2>
     <p class="msub">Conferma pagamento</p>
     <div id="pay-details"></div>
     <div class="mactions" style="margin-top:18px">
       <button class="btn primary" id="pay-confirm">✓ Segna come pagata</button>
-      <button class="btn secondary" onclick="closePay()">Annulla</button>
+      <button class="btn secondary" onclick="window.closePay()">Annulla</button>
     </div>
   </div>
 </div>
@@ -437,14 +437,14 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">Piani accessibili</div>
     <div id="approve-piani-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 12px;margin-bottom:16px"></div>
     <div class="mactions">
-      <button class="btn primary" onclick="confirmApprove()">✓ Conferma approvazione</button>
+      <button class="btn primary" onclick="window.confirmApprove()">✓ Conferma approvazione</button>
       <button class="btn secondary" onclick="document.getElementById('approve-overlay').classList.remove('open')">Annulla</button>
     </div>
   </div>
 </div>
 
 <!-- EDIT RATA MODAL -->
-<div class="overlay" id="edit-rata-overlay" onclick="closeEditRata(event)">
+<div class="overlay" id="edit-rata-overlay" onclick="window.closeEditRata(event)">
   <div class="modal" style="max-width:420px">
     <h2>✏️ Modifica rata</h2>
     <p class="msub" id="edit-rata-sub">Rata –</p>
@@ -460,8 +460,8 @@ input[type="date"]:focus { border-color: var(--accent); }
       ⚠️ La modifica aggiorna solo questa rata. Il totale del piano verrà ricalcolato automaticamente.
     </div>
     <div class="mactions">
-      <button class="btn primary" onclick="confirmEditRata()">Salva modifica</button>
-      <button class="btn secondary" onclick="closeEditRata()">Annulla</button>
+      <button class="btn primary" onclick="window.confirmEditRata()">Salva modifica</button>
+      <button class="btn secondary" onclick="window.closeEditRata()">Annulla</button>
     </div>
   </div>
 </div>
@@ -472,7 +472,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <h2>🗑 Elimina piano</h2>
     <p class="msub" id="del-msg">Sei sicuro?</p>
     <div class="mactions">
-      <button class="btn danger" onclick="confirmDelete()">Sì, elimina</button>
+      <button class="btn danger" onclick="window.confirmDelete()">Sì, elimina</button>
       <button class="btn secondary" onclick="document.getElementById('del-overlay').classList.remove('open')">Annulla</button>
     </div>
   </div>
@@ -755,8 +755,8 @@ function renderHome() {
     const badgeCls = scadute>0?'danger':prossime>0?'warn':'ok';
     const badgeTxt = scadute>0?`${scadute} scadute`:prossime>0?`${prossime} in scad.`:'In regola';
     const ultima = p.rate[p.rate.length-1];
-    const canDel = currentRole==='admin' ? `<button class="card-del" onclick="askDelete('${p.id}',event)">✕</button>` : '';
-    html += `<div class="card" onclick="openPiano('${p.id}')">
+    const canDel = currentRole==='admin' ? `<button class="card-del" onclick="window.askDelete('${p.id}',event)">✕</button>` : '';
+    html += `<div class="card" onclick="window.openPiano('${p.id}')">
       ${canDel}
       <div class="card-header"><div><div class="card-title">${p.nome}</div><div class="card-sub">${p.ente||'–'} · ${nRate} rate</div></div><span class="badge ${badgeCls}">${badgeTxt}</span></div>
       <div class="card-pb-bg"><div class="card-pb-fill" style="width:${pct}%"></div></div>
@@ -771,7 +771,7 @@ function renderHome() {
   });
 
   if (currentRole==='admin') {
-    html += `<div class="add-card" onclick="openAdd()"><div class="plus">+</div><div>Aggiungi rateizzazione</div></div>`;
+    html += `<div class="add-card" onclick="window.openAdd()"><div class="plus">+</div><div>Aggiungi rateizzazione</div></div>`;
   }
 
   document.getElementById('cards-grid').innerHTML = html;
@@ -863,14 +863,14 @@ function renderDetail() {
     const stMap = {pagato:['pagato','✓ Pagata'],scaduto:['scaduto','⚠ Scaduta'],prossimo:['prossimo','↑ In scadenza'],attesa:['attesa','○ In attesa']};
     const [cls,lbl] = stMap[st];
     const payBtn = !canEdit ? '' : st==='pagato'
-      ? `<button class="pay-btn undo" onclick="undoPay(${r.n},event)">Annulla</button>`
-      : `<button class="pay-btn" onclick="openPay(${r.n})">✓ Pagata</button>`;
+      ? `<button class="pay-btn undo" onclick="window.undoPay(${r.n},event)">Annulla</button>`
+      : `<button class="pay-btn" onclick="window.openPay(${r.n})">✓ Pagata</button>`;
     const editBtn = canEdit
-      ? `<button style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'" onclick="openEditRata(${r.n})">✏️</button>`
+      ? `<button style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'" onclick="window.openEditRata(${r.n})">✏️</button>`
       : '';
     const noteVal = (s.note||'').replace(/"/g,'&quot;');
     const noteEl = canEdit
-      ? `<input class="notes-input" type="text" placeholder="nota…" value="${noteVal}" onchange="saveNote(${r.n},this.value)" onclick="event.stopPropagation()">`
+      ? `<input class="notes-input" type="text" placeholder="nota…" value="${noteVal}" onchange="window.saveNote(${r.n},this.value)" onclick="event.stopPropagation()">`
       : `<span style="font-size:12px;color:var(--text-muted)">${s.note||'–'}</span>`;
     return `<tr class="${st==='pagato'?'paid':''} ${st==='scaduto'?'overdue':''} ${st==='prossimo'?'upcoming':''}">
       <td style="font-weight:700;color:var(--text-muted);font-size:12px">${r.n<10?'0'+r.n:r.n}<span style="color:#ccc">/${nRate}</span></td>
@@ -1105,13 +1105,13 @@ function renderDocs() {
         html+=`<div class="doc-item">
           <div class="doc-icon">${icon}</div>
           <div class="doc-info">
-            <div class="doc-name" onclick="openDoc('${d._key}')" title="${d.name}">${(d.name||'').length>20?(d.name||'').slice(0,20)+'…':(d.name||'')}</div>
-            <div class="doc-meta">${date} <select class="doc-cat-sel" onchange="changeDocCat('${d._key}',this.value)">${catOpts}</select></div>
-            <input class="doc-note" type="text" placeholder="Nota…" value="${(d.note||'').replace(/"/g,'&quot;')}" onchange="saveDocNote('${d._key}',this.value)">
+            <div class="doc-name" onclick="window.openDoc('${d._key}')" title="${d.name}">${(d.name||'').length>20?(d.name||'').slice(0,20)+'…':(d.name||'')}</div>
+            <div class="doc-meta">${date} <select class="doc-cat-sel" onchange="window.changeDocCat('${d._key}',this.value)">${catOpts}</select></div>
+            <input class="doc-note" type="text" placeholder="Nota…" value="${(d.note||'').replace(/"/g,'&quot;')}" onchange="window.saveDocNote('${d._key}',this.value)">
           </div>
           <div class="doc-actions">
-            <button class="doc-btn" onclick="openDoc('${d._key}')">Apri</button>
-            <button class="doc-btn del" onclick="deleteDoc('${d._key}')">✕</button>
+            <button class="doc-btn" onclick="window.openDoc('${d._key}')">Apri</button>
+            <button class="doc-btn del" onclick="window.deleteDoc('${d._key}')">✕</button>
           </div>
         </div>`;
       });
@@ -1173,10 +1173,10 @@ async function loadUsers() {
   document.getElementById('user-table').innerHTML=rows.map(u=>`
     <div class="user-row">
       <div class="user-email">${u.email||u.uid}</div>
-      <select class="role-select" onchange="changeRole('${u.uid}',this.value)" ${u.uid===currentUser.uid?'disabled':''}>
+      <select class="role-select" onchange="window.changeRole('${u.uid}',this.value)" ${u.uid===currentUser.uid?'disabled':''}>
         ${['admin','editor','viewer'].map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${roleMap[r]}</option>`).join('')}
       </select>
-      ${u.uid!==currentUser.uid?`<button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="removeUser('${u.uid}')">Rimuovi</button>`:'<span style="font-size:11px;color:var(--text-muted)">(tu)</span>'}
+      ${u.uid!==currentUser.uid?`<button class="btn danger" style="padding:4px 8px;font-size:11px" onclick="window.removeUser('${u.uid}')">Rimuovi</button>`:'<span style="font-size:11px;color:var(--text-muted)">(tu)</span>'}
     </div>`).join('');
 }
 
@@ -1240,7 +1240,7 @@ window.openApproveModal = function(uid, role) {
       <span><strong>${p.nome}</strong> <span style="color:var(--text-muted);font-size:11px">${p.ente||''}</span></span>
     </label>`).join('') +
     `<label style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;cursor:pointer;margin-top:4px">
-      <input type="checkbox" id="approve-all-piani" onchange="toggleAllPiani(this)">
+      <input type="checkbox" id="approve-all-piani" onchange="window.toggleAllPiani(this)">
       <span style="font-weight:600;color:var(--accent)">Tutti i piani presenti e futuri</span>
     </label>`;
   document.getElementById('approve-overlay').classList.add('open');
